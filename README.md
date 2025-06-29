@@ -49,8 +49,7 @@ Proporcionar a los **analistas logísticos**, **programadores de transporte** y 
     [https://cdn.jsdelivr.net/npm/chart.js](https://cdn.jsdelivr.net/npm/chart.js)
   - **SheetJS XLSX:**  
     [https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js](https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js)
-
-> Nota: Las librerías deben descargarse manualmente y colocarse dentro de la carpeta `/libs/`.
+Las librerías deben descargarse manualmente y colocarse dentro de la carpeta `/libs/`.
 
 ---
 
