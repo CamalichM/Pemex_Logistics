@@ -63,6 +63,8 @@ data/
 *.xlsm
 *.xls
 
+historico/
+
 # Dash assets auto-generated or cache
 __dash_cache__/
 .cache/

@@ -1,0 +1,96 @@
+/* Importación de Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Poppins:wght@600;700&display=swap');
+
+body {
+    background-color: #f5f5f5;
+    color: #333;
+    font-family: 'Lato', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1, h2, h3, h4 {
+    font-family: 'Poppins', sans-serif;
+    color: #7B002C; /* Vino */
+    margin-bottom: 10px;
+}
+
+button, .dbc-btn, .btn {
+    background-color: #FFB100; /* Mostaza */
+    color: #333;
+    font-weight: bold;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+button:hover, .dbc-btn:hover, .btn:hover {
+    background-color: #e09c00;
+    transform: translateY(-2px);
+}
+
+.container {
+    max-width: 1400px;
+    margin: auto;
+    padding: 30px;
+}
+
+.kpi-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #7B002C;
+}
+
+.kpi-label {
+    font-size: 1rem;
+    color: #555;
+}
+
+.graph-container {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-success {
+    color: #28a745;
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+.text-warning {
+    color: #FFB100;
+}
+
+.my-4 {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.alert {
+    padding: 10px 15px;
+    border-radius: 6px;
+    background-color: #ffefc7;
+    color: #7B002C;
+    font-weight: bold;
+}
+
