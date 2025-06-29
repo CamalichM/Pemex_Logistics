@@ -3,20 +3,31 @@ from dash import html, dcc, Output, Input
 import dash_bootstrap_components as dbc
 import pandas as pd
 import os
+import sys
 from datetime import datetime
 import plotly.express as px
+import threading
+import webbrowser
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
-DATA_FOLDER = os.path.join(os.getcwd(), 'data')
-HISTORICO_FOLDER = os.path.join(os.getcwd(), 'historico')
+# Función para rutas compatibles con PyInstaller
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+DATA_FOLDER = resource_path('data')
+HISTORICO_FOLDER = resource_path('historico')
 os.makedirs(HISTORICO_FOLDER, exist_ok=True)
 
 TERMINALES = ['Guaymas', 'Zapopan', 'El Castillo', 'Rosarito', 'Topolobampo', 'L Cardenas', 'Manzanillo']
 
 def buscar_archivo_base():
-    posibles_carpetas = [DATA_FOLDER, os.getcwd()]
+    posibles_carpetas = [DATA_FOLDER, os.path.abspath(".")]
     for folder in posibles_carpetas:
         if os.path.exists(folder):
             for f in os.listdir(folder):
@@ -76,7 +87,7 @@ app.layout = dbc.Container(fluid=True, children=[
     dbc.Row([
         dbc.Col([
             html.H5("Carga de Datos Locales"),
-            html.P("La aplicación buscará BASE PACIFICO en /data/ o raíz."),
+            html.P("La aplicación buscará BASE PACIFICO en /data/ o en la carpeta actual."),
             dbc.Button("Cargar Datos y Generar Dashboard", id="load-data", color="warning"),
             html.Div(id="load-status", className="alert mt-2")
         ], width=3),
@@ -158,5 +169,9 @@ def procesar_datos(n_clicks):
 
     return status, total_req, int(por_producto['REGULAR']), int(por_producto['DIESEL']), fig_terminal, fig_producto, fig_destino
 
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:8050/")
+
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    threading.Timer(1, open_browser).start()
+    app.run_server(debug=False)
