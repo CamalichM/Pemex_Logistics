@@ -1,86 +1,70 @@
-# PEMEX Local Logistics Dashboard – Zona Pacífico (Web App)
+# PEMEX Local Logistics Dashboard - Dash App (Zona Pacífico)
 
-## 📌 Descripción General
+## Descripción General
 
-**PEMEX Local Logistics Dashboard** es una aplicación web local, diseñada para ofrecer una solución ligera, portable y altamente interactiva para el análisis operativo y estratégico de la logística de transporte de combustibles en la **Zona Pacífico** de PEMEX.
+PEMEX Local Logistics Dashboard es una aplicación de escritorio desarrollada en Dash (Plotly + Flask), orientada al análisis operativo de la logística de transporte de combustibles en la Zona Pacífico.
 
-La solución permite a los usuarios trabajar en un ambiente **100% local**, sin requerir conexión a internet ni servidores externos, garantizando así la confidencialidad y seguridad de la información operativa.
+La aplicación permite cargar archivos Excel locales, procesar KPIs logísticos clave y visualizar resultados en gráficos interactivos, todo sin necesidad de conexión a internet.
 
----
+## Características Principales
 
-## 🎯 Objetivo del Proyecto
+- Carga automática de archivos Excel desde la carpeta local `/data/`.
+- Detección automática del archivo Programa AT correspondiente al día actual (basado en la fecha dentro del nombre del archivo).
+- Procesamiento y visualización de KPIs logísticos como:
+  - Cumplimiento programado vs real.
+  - Productividad por terminal.
+  - Análisis de ociosidad.
+  - Distribución de viajes por terminal.
+- Interfaz profesional personalizable con colores institucionales (Vino y Mostaza).
+- Compatible con PCs de especificaciones medias.
 
-Proporcionar a los **analistas logísticos**, **programadores de transporte** y **personal operativo de PEMEX** una herramienta de visualización de KPIs clave, que permita una toma de decisiones ágil y fundamentada, a partir de los archivos Excel generados diariamente por las distintas áreas operativas.
+## Estructura del Proyecto
 
----
+```
+PEMEX_Dashboard_Dash/
+├── app.py                  # Código principal de la aplicación Dash
+├── requirements.txt        # Lista de dependencias de Python
+├── /assets/
+│   └── style.css           # Estilos visuales personalizados
+├── /data/                  # Archivos Excel diarios (carpeta ignorada por Git)
+└── README.md               # Este archivo
+```
 
-## 🛠️ Características Principales
+## Requerimientos Previos
 
-- ✅ Lectura y procesamiento local de múltiples archivos Excel:  
-  - Programa AT  
-  - BASE PACÍFICO  
-  - OPERACIÓN 24  
-  - CUMPLE JULIO  
+- Python 3.8 o superior.
+- Instalación de dependencias necesarias:
 
-- ✅ Visualización interactiva de KPIs críticos como:  
-  - Cumplimiento Programado vs Real  
-  - Productividad por Terminal, Cliente o Equipo  
-  - Análisis de Ociosidad de Flota  
-  - Tendencias de Cumplimiento  
-  - Rutas Críticas por bajo desempeño  
+```
+pip install -r requirements.txt
+```
 
-- ✅ Interfaz profesional con:  
-  - Diseño UX/UI de nivel corporativo  
-  - Colores institucionales: **Vino**, **Mostaza** y **Neutros**  
-  - Tipografía moderna para legibilidad y presentación ejecutiva  
-  - Filtros dinámicos y gráficos interactivos desarrollados en **Chart.js**  
+## Instrucciones de Ejecución
 
-- ✅ Total portabilidad:  
-  Solo requiere un navegador moderno (Chrome, Edge o Firefox)
+1. Coloca los archivos Excel operativos dentro de la carpeta `/data/`.
+2. Ejecuta la aplicación desde la terminal:
 
-  
----
+```
+python app.py
+```
 
-## 🚀 Requerimientos Técnicos
+3. Abre tu navegador web y accede a:
 
-- ✅ **Navegador:** Chrome, Edge o Firefox (actualizados).
-- ✅ **Librerías locales necesarias:**
-  - **Chart.js:**  
-    [https://cdn.jsdelivr.net/npm/chart.js](https://cdn.jsdelivr.net/npm/chart.js)
-  - **SheetJS XLSX:**  
-    [https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js](https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js)
+```
+http://127.0.0.1:8050
+```
 
-> Nota: Las librerías deben descargarse manualmente y colocarse dentro de la carpeta `/libs/`.
+## Consideraciones
 
----
+- Este repositorio no contiene archivos de datos operativos de PEMEX.
+- La carpeta `/data/` está listada en `.gitignore` para evitar subir información sensible.
+- La aplicación está optimizada para uso local sin conexión a internet.
 
-## 🖥️ Uso de la Aplicación
+## Posibles Extensiones Futuras
 
-1. Ubicar los archivos Excel diarios dentro de una carpeta local.
-2. Abrir el archivo `index.html` desde el navegador.
-3. Utilizar los botones de carga para importar los datos operativos.
-4. Aplicar filtros según sea necesario: **Cliente**, **Terminal**, **Producto**, **Fecha**.
-5. Analizar las métricas y visualizaciones generadas en tiempo real.
-
----
-
-## 📌 Alcance y Limitaciones
-
-> Este proyecto es una solución **interina y local**, orientada a entornos donde las políticas corporativas de red impiden el uso de herramientas en la nube o de almacenamiento externo.
-
-No sustituye a un sistema de Business Intelligence centralizado como **Microsoft Fabric** o **SQL Server Reporting Services**, pero representa una alternativa eficiente y profesional para el análisis logístico diario.
-
----
-
-## 📈 Posibles Extensiones Futuras
-
+- Empaquetado como `.exe` para usuarios no técnicos.
+- Conexión futura a bases de datos corporativas (SQL Server, Microsoft Fabric).
 - Exportación de reportes en PDF o Excel.
-- Incorporación de análisis predictivo de cumplimiento.
-- Versión empaquetada como aplicación de escritorio (Electron o Python EXE).
-- Migración a plataforma web corporativa de PEMEX.
+- Integración de modelos predictivos para optimización logística.
 
----
-
-**Desarrollado bajo un enfoque de análisis de datos logísticos con estándares de calidad y visualización profesional para PEMEX Zona Pacífico.**
-
-
+Desarrollado bajo un enfoque profesional de análisis logístico y visualización de datos en Dash y Python.
