@@ -78,17 +78,24 @@ def graficas(base_dict, df_v5):
     df_all = pd.concat(base_dict.values(), ignore_index=True)
 
     figs = []
-    figs.append(px.bar(df_all, x='Terminal', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='group', title="Programado por Terminal"))
-    figs.append(px.pie(df_all.melt(id_vars='Terminal', value_vars=['REGULAR','PREMIUM','DIESEL']), names='variable', values='value', title="Distribución por Producto"))
-    figs.append(px.bar(df_all.groupby('Terminal')[['REGULAR','PREMIUM','DIESEL']].sum().reset_index(), x='Terminal', y=['REGULAR','PREMIUM','DIESEL'], title="Totales por Terminal"))
-    figs.append(px.bar(df_all, x='Terminal', y='REGULAR', color='Terminal', title="Regular por Terminal"))
-    figs.append(px.bar(df_all, x='Terminal', y='PREMIUM', color='Terminal', title="Premium por Terminal"))
-    figs.append(px.bar(df_all, x='Terminal', y='DIESEL', color='Terminal', title="Diesel por Terminal"))
+
+    # Volumen programado por terminal con barras apiladas
+    resumen_terminal = df_all.groupby('Terminal')[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
+    figs.append(px.bar(resumen_terminal, x='Terminal', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack', title='Programado por Terminal'))
+
+    # Volumen total por producto
+    totales = resumen_terminal[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
+    totales.columns = ['Producto', 'Volumen']
+    figs.append(px.bar(totales, x='Producto', y='Volumen', title='Volumen Total por Producto'))
+
+    # Participación por producto
+    figs.append(px.pie(totales, names='Producto', values='Volumen', title='Participación por Producto'))
 
     if not df_v5.empty:
-        figs.append(px.bar(df_v5, x='TERMINAL', y='Cump Demanda %', title="Cumplimiento de Demanda"))
-        figs.append(px.bar(df_v5, x='TERMINAL', y='% Utilizado', title="Utilización de Capacidad"))
-        figs.append(px.bar(df_v5, x='TERMINAL', y='Diferencia', title="Brecha Programado vs Asignado"))
+        df_v5_sorted = df_v5.sort_values('TERMINAL')
+        figs.append(px.line(df_v5_sorted, x='TERMINAL', y='Cump Demanda %', markers=True, title='Cumplimiento de Demanda por Terminal'))
+        figs.append(px.line(df_v5_sorted, x='TERMINAL', y='% Utilizado', markers=True, title='Utilización de Capacidad'))
+        figs.append(px.bar(df_v5_sorted, x='TERMINAL', y='Diferencia', title='Brecha Programado vs Asignado'))
 
     for fig in figs:
         fig.update_layout(transition_duration=500)
