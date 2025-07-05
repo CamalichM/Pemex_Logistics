@@ -106,10 +106,34 @@ app.layout = dbc.Container(fluid=True, children=[
     html.H1("PEMEX Logística - Dashboard Zona Pacífico", className="text-center my-4 text-primary fw-bold"),
 
     dbc.Row([
-        dbc.Col(html.Div([html.H4("Total"), html.Div(id="kpi-total", className="display-6 text-success")]), width=3),
-        dbc.Col(html.Div([html.H4("Regular"), html.Div(id="kpi-regular", className="display-6 text-success")]), width=3),
-        dbc.Col(html.Div([html.H4("Premium"), html.Div(id="kpi-premium", className="display-6 text-success")]), width=3),
-        dbc.Col(html.Div([html.H4("Diesel"), html.Div(id="kpi-diesel", className="display-6 text-success")]), width=3),
+        dbc.Col(
+            html.Div([
+                html.H4("Total"),
+                html.Div(id="kpi-total", className="display-6 text-success"),
+            ], className="kpi-card"),
+            width=3,
+        ),
+        dbc.Col(
+            html.Div([
+                html.H4("Regular"),
+                html.Div(id="kpi-regular", className="display-6 text-success"),
+            ], className="kpi-card"),
+            width=3,
+        ),
+        dbc.Col(
+            html.Div([
+                html.H4("Premium"),
+                html.Div(id="kpi-premium", className="display-6 text-success"),
+            ], className="kpi-card"),
+            width=3,
+        ),
+        dbc.Col(
+            html.Div([
+                html.H4("Diesel"),
+                html.Div(id="kpi-diesel", className="display-6 text-success"),
+            ], className="kpi-card"),
+            width=3,
+        ),
     ], className="mb-4"),
 
     dbc.Button("Cargar Datos", id="load-data", color="primary", className="my-3"),
@@ -141,7 +165,14 @@ def cargar(n):
     total, reg, pre, die = calcular_kpis(base_dict)
     figs = graficas(base_dict, df_v5)
 
-    graficas_html = [dbc.Col(dcc.Graph(figure=fig), width=6, className="mb-4") for fig in figs]
+    graficas_html = [
+        dbc.Col(
+            html.Div(dcc.Graph(figure=fig), className="graph-container"),
+            width=6,
+            className="mb-4",
+        )
+        for fig in figs
+    ]
 
     return "✅ Datos cargados", total, reg, pre, die, graficas_html
 
