@@ -110,7 +110,8 @@ app.layout = dbc.Container(fluid=True, children=[
 
     html.Div(id="graficas-div", className="row g-4"),
 
-    dbc.Button("Salir", id="exit-button", color="danger", className="mt-4")
+    dbc.Button("Salir", id="exit-button", color="danger", className="mt-4"),
+    html.Div(id="exit-dummy", style={"display": "none"})
 ])
 
 @app.callback(
@@ -138,13 +139,13 @@ def cargar(n):
     return "✅ Datos cargados", total, reg, pre, die, graficas_html
 
 @app.callback(
-    Output("load-status", "children"),
+    Output("exit-dummy", "children"),
     Input("exit-button", "n_clicks"),
     prevent_initial_call=True
 )
 def salir(n):
     os.kill(os.getpid(), signal.SIGTERM)
-    return "Aplicación cerrada"
+    return ""
 
 def abrir_navegador():
     webbrowser.open_new("http://127.0.0.1:8050/")
