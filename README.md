@@ -21,8 +21,8 @@ La aplicación permite cargar archivos Excel locales, procesar KPIs logísticos 
 ## Estructura del Proyecto
 
 ```
-PEMEX_Dashboard_Dash/
-├── app.py                  # Código principal de la aplicación Dash
+Pemex_Logistics/
+├── Pemex_Logistica.py      # Código principal de la aplicación Dash
 ├── requirements.txt        # Lista de dependencias de Python
 ├── /assets/
 │   └── style.css           # Estilos visuales personalizados
@@ -45,7 +45,7 @@ pip install -r requirements.txt
 2. Ejecuta la aplicación desde la terminal:
 
 ```
-python app.py
+python Pemex_Logistica.py
 ```
 
 3. Abre tu navegador web y accede a:
