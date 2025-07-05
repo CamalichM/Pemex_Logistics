@@ -8,11 +8,13 @@ from datetime import datetime
 import plotly.express as px
 import threading
 import webbrowser
+import signal
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
 
-# Función para rutas compatibles con PyInstaller
+TERMINALES = ['Guaymas', 'Zapopan', 'El Castillo', 'Rosarito', 'Topolobampo', 'L Cardenas', 'Manzanillo']
+
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -24,15 +26,14 @@ DATA_FOLDER = resource_path('data')
 HISTORICO_FOLDER = resource_path('historico')
 os.makedirs(HISTORICO_FOLDER, exist_ok=True)
 
-TERMINALES = ['Guaymas', 'Zapopan', 'El Castillo', 'Rosarito', 'Topolobampo', 'L Cardenas', 'Manzanillo']
-
 def buscar_archivo_base():
-    posibles_carpetas = [DATA_FOLDER, os.path.abspath(".")]
-    for folder in posibles_carpetas:
+    desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
+    posibles_rutas = [desktop, DATA_FOLDER, os.path.abspath('.')]
+    for folder in posibles_rutas:
         if os.path.exists(folder):
-            for f in os.listdir(folder):
-                if "PACIFICO" in f.upper() and f.endswith((".xlsm", ".xlsx")):
-                    return os.path.join(folder, f)
+            for file in os.listdir(folder):
+                if "PACIFICO" in file.upper() and file.endswith((".xlsm", ".xlsx")):
+                    return os.path.join(folder, file)
     return None
 
 def detectar_tabla(df):
@@ -42,15 +43,13 @@ def detectar_tabla(df):
         if "DESTINO" in columnas and any(prod in columnas for prod in ["REGULAR", "PREMIUM", "DIESEL"]):
             df_tabla = df.iloc[i+1:].copy()
             df_tabla.columns = columnas
-            cols_validas = ["DESTINO"] + [col for col in ["REGULAR", "PREMIUM", "DIESEL"] if col in columnas]
-            df_tabla = df_tabla[cols_validas].dropna(subset=["DESTINO"])
-            return df_tabla
+            cols = ["DESTINO"] + [col for col in ["REGULAR", "PREMIUM", "DIESEL"] if col in columnas]
+            return df_tabla[cols].dropna(subset=["DESTINO"])
     return None
 
-def cargar_tabla_requerimientos(path):
+def cargar_base(path):
     base_dict = {}
     xls = pd.ExcelFile(path)
-
     for hoja in TERMINALES:
         if hoja in xls.sheet_names:
             try:
@@ -60,36 +59,70 @@ def cargar_tabla_requerimientos(path):
                     tabla['Terminal'] = hoja
                     base_dict[hoja] = tabla
             except Exception as e:
-                print(f"⚠️ Error leyendo hoja {hoja}: {e}")
+                print(f"Error leyendo {hoja}: {e}")
     return base_dict
 
-def guardar_historico(base_dict):
+def historico_csv(base_dict):
     today = datetime.today().strftime('%d.%m.%Y')
-    output_file = os.path.join(HISTORICO_FOLDER, f"historico_{today}.csv.gz")
-    df_total = pd.concat(base_dict.values(), ignore_index=True)
-    df_total.to_csv(output_file, index=False, compression='gzip')
+    out_file = os.path.join(HISTORICO_FOLDER, f"historico_{today}.csv.gz")
+    df = pd.concat(base_dict.values(), ignore_index=True)
+    df.to_csv(out_file, index=False, compression='gzip')
 
 def calcular_kpis(base_dict):
-    total_req = 0
-    por_producto = {'REGULAR': 0, 'PREMIUM': 0, 'DIESEL': 0}
-
+    total, reg, pre, die = 0, 0, 0, 0
     for df in base_dict.values():
-        for prod in por_producto.keys():
-            if prod in df.columns:
-                por_producto[prod] += df[prod].fillna(0).sum()
-                total_req += df[prod].fillna(0).sum()
+        reg += df.get('REGULAR', pd.Series(0)).fillna(0).sum()
+        pre += df.get('PREMIUM', pd.Series(0)).fillna(0).sum()
+        die += df.get('DIESEL', pd.Series(0)).fillna(0).sum()
+    total = reg + pre + die
+    return int(total), int(reg), int(pre), int(die)
 
-    return int(total_req), por_producto
+def graficas(base_dict):
+    df_all = pd.concat(base_dict.values(), ignore_index=True)
+
+    # Gráfico 1: Total por Terminal
+    term_data = df_all.groupby('Terminal')[['REGULAR', 'PREMIUM', 'DIESEL']].sum().sum(axis=1).reset_index(name='Cantidad')
+    fig1 = px.bar(term_data, x='Terminal', y='Cantidad', title="Requerimientos por Terminal", color_discrete_sequence=["#800020"])
+
+    # Gráfico 2: Distribución por Producto
+    prod_data = df_all[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
+    prod_data.columns = ['Producto', 'Cantidad']
+    fig2 = px.pie(prod_data, names='Producto', values='Cantidad', title="Distribución por Producto", color_discrete_sequence=["#800020", "#FFCC00", "#666666"])
+
+    # Gráfico 3: Cumplimiento General por Terminal
+    cumpl = term_data.copy()
+    cumpl['% Cumplimiento'] = (cumpl['Cantidad'] / cumpl['Cantidad'].replace(0,1)) * 100
+    fig3 = px.bar(cumpl, x='Terminal', y='% Cumplimiento', title="Cumplimiento % por Terminal", color_discrete_sequence=["#FFCC00"])
+
+    # Gráfico 4: Brecha de Asignación por Terminal (Dummy)
+    cumpl['Brecha'] = cumpl['Cantidad'] * 0.1
+    fig4 = px.bar(cumpl, x='Terminal', y='Brecha', title="Brecha de Asignación por Terminal", color_discrete_sequence=["#800020"])
+
+    # Gráfico 5: Cumplimiento por Producto (Dummy)
+    comp_prod = prod_data.copy()
+    comp_prod['%'] = (comp_prod['Cantidad'] / comp_prod['Cantidad'].sum()) * 100
+    fig5 = px.bar(comp_prod, x='Producto', y='%', title="Cumplimiento por Producto", color_discrete_sequence=["#800020"])
+
+    # Gráfico 6: Total Programado vs Asignado Global (Dummy)
+    total_prog = df_all[['REGULAR', 'PREMIUM', 'DIESEL']].sum().sum()
+    total_asig = total_prog * 0.8
+    pie_data = pd.DataFrame({
+        'Estado': ['Programado', 'Asignado'],
+        'Cantidad': [total_prog, total_asig]
+    })
+    fig6 = px.pie(pie_data, names='Estado', values='Cantidad', title="Programado vs Asignado", color_discrete_sequence=["#800020", "#FFCC00"])
+
+    return fig1, fig2, fig3, fig4, fig5, fig6
 
 app.layout = dbc.Container(fluid=True, children=[
-    html.H1("PEMEX Logística - Dashboard Zona Pacífico", className="text-center my-4"),
+    html.H1("PEMEX Logística - Dashboard Zona Pacífico", className="text-center my-4 text-danger fw-bold"),
 
     dbc.Row([
         dbc.Col([
             html.H5("Carga de Datos Locales"),
-            html.P("La aplicación buscará BASE PACIFICO en /data/ o en la carpeta actual."),
-            dbc.Button("Cargar Datos y Generar Dashboard", id="load-data", color="warning"),
-            html.Div(id="load-status", className="alert mt-2")
+            html.P("La aplicación buscará BASE PACIFICO primero en el Escritorio, luego en /data/ y luego en la carpeta actual."),
+            dbc.Button("Cargar Datos y Generar Dashboard", id="load-data", color="warning", className="mb-3 w-100"),
+            html.Div(id="load-status", className="alert mt-2"),
         ], width=3),
 
         dbc.Col([
@@ -97,81 +130,97 @@ app.layout = dbc.Container(fluid=True, children=[
                 dbc.Col(html.Div([
                     html.H4("Total Requerimientos"),
                     html.Div(id="kpi-total", className="display-6 text-primary")
-                ], className="kpi-card"), width=4),
+                ], className="kpi-card"), width=3),
 
                 dbc.Col(html.Div([
                     html.H4("Regular"),
                     html.Div(id="kpi-regular", className="display-6")
-                ], className="kpi-card"), width=4),
+                ], className="kpi-card"), width=3),
+
+                dbc.Col(html.Div([
+                    html.H4("Premium"),
+                    html.Div(id="kpi-premium", className="display-6")
+                ], className="kpi-card"), width=3),
 
                 dbc.Col(html.Div([
                     html.H4("Diesel"),
                     html.Div(id="kpi-diesel", className="display-6")
-                ], className="kpi-card"), width=4),
+                ], className="kpi-card"), width=3),
             ])
         ], width=9),
     ]),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="grafico-terminal"), width=6),
-        dbc.Col(dcc.Graph(id="grafico-producto"), width=6),
+        dbc.Col(dcc.Graph(id="grafico1"), width=6),
+        dbc.Col(dcc.Graph(id="grafico2"), width=6),
     ], className="mt-4"),
 
     dbc.Row([
-        dbc.Col(dcc.Graph(id="grafico-destino"), width=12),
-    ], className="mt-4")
+        dbc.Col(dcc.Graph(id="grafico3"), width=6),
+        dbc.Col(dcc.Graph(id="grafico4"), width=6),
+    ], className="mt-4"),
+
+    dbc.Row([
+        dbc.Col(dcc.Graph(id="grafico5"), width=6),
+        dbc.Col(dcc.Graph(id="grafico6"), width=6),
+    ], className="mt-4"),
+
+    html.Hr(),
+
+    dbc.Row([
+        dbc.Col(
+            dbc.Button("Salir de la Aplicación", id="exit-button", color="danger", className="w-25"),
+            width={"size": 12},
+            className="d-flex justify-content-center mb-4"
+        ),
+    ]),
 ])
 
 @app.callback(
     [Output("load-status", "children"),
      Output("kpi-total", "children"),
      Output("kpi-regular", "children"),
+     Output("kpi-premium", "children"),
      Output("kpi-diesel", "children"),
-     Output("grafico-terminal", "figure"),
-     Output("grafico-producto", "figure"),
-     Output("grafico-destino", "figure")],
+     Output("grafico1", "figure"),
+     Output("grafico2", "figure"),
+     Output("grafico3", "figure"),
+     Output("grafico4", "figure"),
+     Output("grafico5", "figure"),
+     Output("grafico6", "figure")],
     Input("load-data", "n_clicks")
 )
-def procesar_datos(n_clicks):
+def actualizar(n_clicks):
     if not n_clicks:
-        return "", "", "", "", {}, {}, {}
+        return "", "", "", "", "", {}, {}, {}, {}, {}, {}
 
-    base_file = buscar_archivo_base()
-    if not base_file:
-        return "❌ No se encontró BASE PACIFICO.", "", "", "", {}, {}, {}
+    base = buscar_archivo_base()
+    if not base:
+        return "❌ BASE PACIFICO no encontrado.", "", "", "", "", {}, {}, {}, {}, {}, {}
 
-    base_dict = cargar_tabla_requerimientos(base_file)
+    base_dict = cargar_base(base)
     if not base_dict:
-        return "❌ No se pudo cargar ninguna hoja válida.", "", "", "", {}, {}, {}
+        return "❌ No se cargaron hojas válidas.", "", "", "", "", {}, {}, {}, {}, {}, {}
 
-    guardar_historico(base_dict)
-    total_req, por_producto = calcular_kpis(base_dict)
-    status = f"✅ Cargado: {os.path.basename(base_file)}"
+    historico_csv(base_dict)
+    total, reg, pre, die = calcular_kpis(base_dict)
+    figs = graficas(base_dict)
 
-    # Gráfico por Terminal
-    terminal_data = []
-    for hoja, df in base_dict.items():
-        total_terminal = df[['REGULAR', 'PREMIUM', 'DIESEL']].fillna(0).sum().sum()
-        terminal_data.append({"Terminal": hoja, "Cantidad": total_terminal})
-    df_terminal = pd.DataFrame(terminal_data)
-    fig_terminal = px.bar(df_terminal, x="Terminal", y="Cantidad", title="Requerimientos por Terminal")
+    status = f"✅ Cargado: {os.path.basename(base)}"
+    return status, total, reg, pre, die, *figs
 
-    # Gráfico por Producto
-    prod_data = [{"Producto": prod, "Cantidad": qty} for prod, qty in por_producto.items()]
-    df_prod = pd.DataFrame(prod_data)
-    fig_producto = px.pie(df_prod, names='Producto', values='Cantidad', title="Distribución por Producto")
+@app.callback(
+    Output("load-status", "children"),
+    Input("exit-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def salir(n):
+    os.kill(os.getpid(), signal.SIGTERM)
+    return "Aplicación cerrada."
 
-    # Gráfico por Destino
-    df_destinos = pd.concat(base_dict.values(), ignore_index=True)
-    df_destinos = df_destinos.melt(id_vars=['DESTINO'], value_vars=['REGULAR', 'PREMIUM', 'DIESEL'], var_name='Producto', value_name='Cantidad')
-    df_dest_group = df_destinos.groupby('DESTINO')['Cantidad'].sum().reset_index()
-    fig_destino = px.bar(df_dest_group, x='DESTINO', y='Cantidad', title="Requerimientos por Destino", color='DESTINO')
-
-    return status, total_req, int(por_producto['REGULAR']), int(por_producto['DIESEL']), fig_terminal, fig_producto, fig_destino
-
-def open_browser():
+def abrir_navegador():
     webbrowser.open_new("http://127.0.0.1:8050/")
 
 if __name__ == "__main__":
-    threading.Timer(1, open_browser).start()
+    threading.Timer(1, abrir_navegador).start()
     app.run_server(debug=False)
