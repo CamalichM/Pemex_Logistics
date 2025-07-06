@@ -19,24 +19,24 @@ HISTORICO_FOLDER = 'historico'
 os.makedirs(HISTORICO_FOLDER, exist_ok=True)
 
 def buscar_archivo(nombre_parcial):
-    rutas = [os.path.join(os.path.expanduser('~'), 'Desktop'), DATA_FOLDER, os.getcwd()]
+    rutas = [DATA_FOLDER, os.getcwd()]
     for carpeta in rutas:
         if os.path.exists(carpeta):
             for archivo in os.listdir(carpeta):
-                if nombre_parcial.upper() in archivo.upper() and archivo.endswith(('.xlsm', '.xlsx')):
+                if nombre_parcial.replace(" ", "").upper() in archivo.replace(" ", "").upper():
                     return os.path.join(carpeta, archivo)
     return None
 
-def detectar_tabla(df):
-    for i in range(len(df)):
-        fila = df.iloc[i]
-        columnas = fila.astype(str).str.strip().str.upper().tolist()
-        if 'DESTINO' in columnas and any(p in columnas for p in ['REGULAR', 'PREMIUM', 'DIESEL']):
-            df_tabla = df.iloc[i+1:].copy()
-            df_tabla.columns = columnas
-            cols = ['DESTINO'] + [c for c in ['REGULAR', 'PREMIUM', 'DIESEL'] if c in columnas]
-            return df_tabla[cols].dropna(subset=['DESTINO'])
-    return None
+def cargar_completo_v5():
+    path = buscar_archivo('Completo v5')
+    if path:
+        df = pd.read_excel(path, sheet_name='Reporte SAD', header=3)
+        df.columns = [str(c).strip() for c in df.columns]
+        df.rename(columns={'GASOLINA REGULAR': 'Terminal'}, inplace=True)
+        df = df[df['Terminal'].notna() & ~df['Terminal'].astype(str).str.contains('Terminales', case=False, na=False)]
+        df = df.reset_index(drop=True)
+        return df
+    return pd.DataFrame()
 
 def cargar_base():
     path = buscar_archivo('PACIFICO')
@@ -47,55 +47,55 @@ def cargar_base():
     for hoja in TERMINALES:
         if hoja in xls.sheet_names:
             df_raw = pd.read_excel(xls, sheet_name=hoja, header=None)
-            tabla = detectar_tabla(df_raw)
-            if tabla is not None and not tabla.empty:
-                tabla['Terminal'] = hoja
-                base_dict[hoja] = tabla
+            for i, fila in df_raw.iterrows():
+                columnas = fila.astype(str).str.strip().str.upper().tolist()
+                if 'DESTINO' in columnas and any(p in columnas for p in ['REGULAR', 'PREMIUM', 'DIESEL']):
+                    tabla = df_raw.iloc[i+1:].copy()
+                    tabla.columns = columnas
+                    tabla = tabla[['DESTINO', 'REGULAR', 'PREMIUM', 'DIESEL']]
+                    tabla.dropna(subset=['DESTINO'], inplace=True)
+                    tabla['Terminal'] = hoja
+                    base_dict[hoja] = tabla.reset_index(drop=True)
+                    break
     return path, base_dict
 
-def cargar_completo_v5():
-    path = buscar_archivo('Completo v5')
-    if path:
-        df = pd.read_excel(path, sheet_name=0)
-        df.columns = [c.strip() for c in df.columns]
-        return df
-    return pd.DataFrame()
-
-def historico_csv(base_dict):
-    today = datetime.today().strftime('%d.%m.%Y')
-    out_file = os.path.join(HISTORICO_FOLDER, f"historico_{today}.csv.gz")
-    df = pd.concat(base_dict.values(), ignore_index=True)
-    df.to_csv(out_file, index=False, compression='gzip')
-
-def calcular_kpis(base_dict):
-    reg = sum(df.get('REGULAR', pd.Series(0)).fillna(0).sum() for df in base_dict.values())
-    pre = sum(df.get('PREMIUM', pd.Series(0)).fillna(0).sum() for df in base_dict.values())
-    die = sum(df.get('DIESEL', pd.Series(0)).fillna(0).sum() for df in base_dict.values())
-    total = reg + pre + die
-    return int(total), int(reg), int(pre), int(die)
-
 def graficas(base_dict, df_v5):
-    df_all = pd.concat(base_dict.values(), ignore_index=True)
-
     figs = []
 
-    # Volumen programado por terminal con barras apiladas
-    resumen_terminal = df_all.groupby('Terminal')[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
-    figs.append(px.bar(resumen_terminal, x='Terminal', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack', title='Programado por Terminal'))
+    df_all = pd.concat(base_dict.values())
+    resumen_total_terminal = df_all.groupby('Terminal')[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
+    total_productos = resumen_total_terminal[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
+    total_productos.columns = ['Producto', 'Volumen']
+    figs.append(px.pie(total_productos, names='Producto', values='Volumen', title='Participación por Producto'))
 
-    # Volumen total por producto
-    totales = resumen_terminal[['REGULAR', 'PREMIUM', 'DIESEL']].sum().reset_index()
-    totales.columns = ['Producto', 'Volumen']
-    figs.append(px.bar(totales, x='Producto', y='Volumen', title='Volumen Total por Producto'))
+    figs.append(px.bar(resumen_total_terminal, x='Terminal', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack',
+                       title='Volumen Programado Total por Terminal'))
 
-    # Participación por producto
-    figs.append(px.pie(totales, names='Producto', values='Volumen', title='Participación por Producto'))
+    figs.append(px.bar(total_productos, x='Producto', y='Volumen', title='Volumen Total por Producto'))
+
+    for hoja, df in base_dict.items():
+        resumen_terminal = df.groupby('DESTINO', as_index=False)[['REGULAR', 'PREMIUM', 'DIESEL']].sum()
+        resumen_terminal['DESTINO'] = resumen_terminal['DESTINO'].astype(str)
+        fig = px.bar(resumen_terminal, x='DESTINO', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack',
+                     title=f'Volumen Programado hacia Destinos desde {hoja}')
+        fig.update_xaxes(title_text='Destino', categoryorder='array', categoryarray=resumen_terminal['DESTINO'].tolist())
+        figs.append(fig)
 
     if not df_v5.empty:
-        df_v5_sorted = df_v5.sort_values('TERMINAL')
-        figs.append(px.line(df_v5_sorted, x='TERMINAL', y='Cump Demanda %', markers=True, title='Cumplimiento de Demanda por Terminal'))
-        figs.append(px.line(df_v5_sorted, x='TERMINAL', y='% Utilizado', markers=True, title='Utilización de Capacidad'))
-        figs.append(px.bar(df_v5_sorted, x='TERMINAL', y='Diferencia', title='Brecha Programado vs Asignado'))
+        df_v5_sorted = df_v5.sort_values('Terminal')
+        col_cump = next((c for c in df_v5.columns if 'Cump' in c), None)
+        col_util = next((c for c in df_v5.columns if 'Utilizado' in c), None)
+        col_dif = next((c for c in df_v5.columns if 'Diferencia' in c), None)
+
+        if col_cump:
+            figs.append(px.line(df_v5_sorted, x='Terminal', y=col_cump, markers=True,
+                                title='Cumplimiento de Demanda por Terminal'))
+        if col_util:
+            figs.append(px.line(df_v5_sorted, x='Terminal', y=col_util, markers=True,
+                                title='Utilización de Capacidad'))
+        if col_dif:
+            figs.append(px.bar(df_v5_sorted, x='Terminal', y=col_dif,
+                               title='Brecha Programado vs Asignado'))
 
     for fig in figs:
         fig.update_layout(transition_duration=500)
@@ -106,38 +106,14 @@ app.layout = dbc.Container(fluid=True, children=[
     html.H1("PEMEX Logística - Dashboard Zona Pacífico", className="text-center my-4 text-primary fw-bold"),
 
     dbc.Row([
-        dbc.Col(
-            html.Div([
-                html.H4("Total"),
-                html.Div(id="kpi-total", className="display-6 text-success"),
-            ], className="kpi-card"),
-            width=3,
-        ),
-        dbc.Col(
-            html.Div([
-                html.H4("Regular"),
-                html.Div(id="kpi-regular", className="display-6 text-success"),
-            ], className="kpi-card"),
-            width=3,
-        ),
-        dbc.Col(
-            html.Div([
-                html.H4("Premium"),
-                html.Div(id="kpi-premium", className="display-6 text-success"),
-            ], className="kpi-card"),
-            width=3,
-        ),
-        dbc.Col(
-            html.Div([
-                html.H4("Diesel"),
-                html.Div(id="kpi-diesel", className="display-6 text-success"),
-            ], className="kpi-card"),
-            width=3,
-        ),
+        dbc.Col(html.Div([html.H4("Total"), html.Div("0", id="kpi-total", className="display-6 text-muted")]), width=3),
+        dbc.Col(html.Div([html.H4("Regular"), html.Div("0", id="kpi-regular", className="display-6 text-muted")]), width=3),
+        dbc.Col(html.Div([html.H4("Premium"), html.Div("0", id="kpi-premium", className="display-6 text-muted")]), width=3),
+        dbc.Col(html.Div([html.H4("Diesel"), html.Div("0", id="kpi-diesel", className="display-6 text-muted")]), width=3),
     ], className="mb-4"),
 
     dbc.Button("Cargar Datos", id="load-data", color="primary", className="my-3"),
-    html.Div(id="load-status", className="mb-3"),
+    html.Div("Esperando datos…", id="load-status", className="mb-3 text-info"),
 
     html.Div(id="graficas-div", className="row g-4"),
 
@@ -158,19 +134,18 @@ app.layout = dbc.Container(fluid=True, children=[
 def cargar(n):
     path_base, base_dict = cargar_base()
     if not path_base or not base_dict:
-        return "❌ Datos no encontrados", "", "", "", "", []
+        return "❌ Datos no encontrados", "0", "0", "0", "0", []
 
-    historico_csv(base_dict)
     df_v5 = cargar_completo_v5()
-    total, reg, pre, die = calcular_kpis(base_dict)
+    reg = sum(pd.to_numeric(df.get('REGULAR'), errors='coerce').fillna(0).sum() for df in base_dict.values())
+    pre = sum(pd.to_numeric(df.get('PREMIUM'), errors='coerce').fillna(0).sum() for df in base_dict.values())
+    die = sum(pd.to_numeric(df.get('DIESEL'), errors='coerce').fillna(0).sum() for df in base_dict.values())
+    total = reg + pre + die
+
     figs = graficas(base_dict, df_v5)
 
     graficas_html = [
-        dbc.Col(
-            html.Div(dcc.Graph(figure=fig), className="graph-container"),
-            width=6,
-            className="mb-4",
-        )
+        dbc.Col(dcc.Graph(figure=fig), width=6, className="mb-4")
         for fig in figs
     ]
 
