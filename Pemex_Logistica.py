@@ -78,7 +78,12 @@ def graficas(base_dict, df_v5):
         resumen_terminal['DESTINO'] = resumen_terminal['DESTINO'].astype(str)
         fig = px.bar(resumen_terminal, x='DESTINO', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack',
                      title=f'Volumen Programado hacia Destinos desde {hoja}')
-        fig.update_xaxes(title_text='Destino', categoryorder='array', categoryarray=resumen_terminal['DESTINO'].tolist())
+        fig.update_xaxes(
+            title_text='Destino',
+            categoryorder='array',
+            categoryarray=resumen_terminal['DESTINO'].tolist(),
+            type='category'
+        )
         figs.append(fig)
 
     if not df_v5.empty:
