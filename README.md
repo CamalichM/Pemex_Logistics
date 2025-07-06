@@ -1,8 +1,8 @@
-# PEMEX Local Logistics Dashboard - Dash App (Zona Pacífico)
+# PEMEX Local Logistics Dashboard - Dash App (Operativo)
 
 ## Descripción General
 
-PEMEX Local Logistics Dashboard es una aplicación de escritorio desarrollada en Dash (Plotly + Flask), orientada al análisis operativo de la logística de transporte de combustibles en la Zona Pacífico.
+PEMEX Local Logistics Dashboard es una aplicación de escritorio desarrollada en Dash (Plotly + Flask), orientada al análisis operativo de la logística de transporte de combustibles.
 
 La aplicación permite cargar archivos Excel locales, procesar KPIs logísticos clave y visualizar resultados en gráficos interactivos, todo sin necesidad de conexión a internet.
 

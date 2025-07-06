@@ -75,10 +75,19 @@ def graficas(base_dict, df_v5):
 
     for hoja, df in base_dict.items():
         resumen_terminal = df.groupby('DESTINO', as_index=False)[['REGULAR', 'PREMIUM', 'DIESEL']].sum()
-        resumen_terminal['DESTINO'] = resumen_terminal['DESTINO'].astype(str)
-        fig = px.bar(resumen_terminal, x='DESTINO', y=['REGULAR', 'PREMIUM', 'DIESEL'], barmode='stack',
-                     title=f'Volumen Programado hacia Destinos desde {hoja}')
-        fig.update_xaxes(title_text='Destino', categoryorder='array', categoryarray=resumen_terminal['DESTINO'].tolist())
+        resumen_terminal['DESTINO'] = resumen_terminal['DESTINO'].astype(str).str.strip()
+        fig = px.bar(
+            resumen_terminal,
+            x='DESTINO',
+            y=['REGULAR', 'PREMIUM', 'DIESEL'],
+            barmode='stack',
+            title=f'Volumen Programado hacia Destinos desde {hoja}',
+            category_orders={'DESTINO': resumen_terminal['DESTINO'].tolist()}
+        )
+        fig.update_xaxes(
+            title_text='Destino',
+            type='category'
+        )
         figs.append(fig)
 
     if not df_v5.empty:
@@ -103,7 +112,7 @@ def graficas(base_dict, df_v5):
     return figs
 
 app.layout = dbc.Container(fluid=True, children=[
-    html.H1("PEMEX Logística - Dashboard Zona Pacífico", className="text-center my-4 text-primary fw-bold"),
+    html.H1("PEMEX Logística - Dashboard Operativo", className="text-center my-4 text-primary fw-bold"),
 
     dbc.Row([
         dbc.Col(html.Div([html.H4("Total"), html.Div("0", id="kpi-total", className="display-6 text-muted")]), width=3),
